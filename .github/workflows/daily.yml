@@ -1,0 +1,68 @@
+name: Daily update
+
+on:
+  schedule:
+    - cron: "17 5 * * *"  # 05:17 UTC every day
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked  # Python version from .python-version
+
+      # Fails if the data branch is missing, so a fresh empty database is
+      # never force-pushed over the existing one.
+      - name: Restore database from data branch
+        run: |
+          mkdir -p data
+          git fetch --depth=1 origin data:refs/remotes/origin/data
+          git show origin/data:jobs.duckdb > data/jobs.duckdb
+
+      - name: Fetch ads
+        run: uv run python -m sweden_jobs.fetch
+
+      - name: Update database
+        run: uv run python -m sweden_jobs.db
+
+      - name: Run analysis
+        run: uv run python -m sweden_jobs.analysis
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # Builds a parentless commit holding only jobs.duckdb, without touching
+      # the working tree, and replaces the data branch with it.
+      - name: Push database to data branch
+        run: |
+          blob=$(git hash-object -w data/jobs.duckdb)
+          tree=$(printf '100644 blob %s\tjobs.duckdb\n' "$blob" | git mktree)
+          commit=$(git commit-tree "$tree" -m "Database $(date -u +%F)")
+          git push --force origin "$commit:refs/heads/data"
+
+      - name: Commit results to master
+        run: |
+          git add results
+          if git diff --cached --quiet; then
+            echo "No changes in results/"
+            exit 0
+          fi
+          git commit -m "Update results ($(date -u +%F))"
+          git pull --rebase origin master
+          git push origin HEAD:master
