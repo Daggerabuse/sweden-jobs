@@ -43,7 +43,9 @@ SKILLS = {
 # Matched against the headline, whole words, case-insensitive. "talent" alone
 # is not used: it also appears in titles like "HR Product Owner for Talent".
 ENTRY_LEVEL = {
-    "Junior / graduate": r"\b(?:juniora?|graduate|trainee|ny(?:ut)?examinerad\w*|talent program(?:me)?)\b",
+    "Junior / graduate": (
+        r"\b(?:juniora?|graduate|trainee|" r"ny(?:ut)?examinerad\w*|talent program(?:me)?)\b"
+    ),
     "Internship": r"\b(?:praktik|praktikant(?:er)?|intern|internship)\b",
     "Summer job": r"\b(?:sommarjobb\w*|summer job|summer intern\w*)\b",
     "Student job": r"\b(?:student|studentmedarbetare)\b",
