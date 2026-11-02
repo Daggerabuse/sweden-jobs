@@ -1,18 +1,20 @@
 """First analyses of the ads in data/jobs.duckdb.
 
 Each analysis takes the ads DataFrame from load_ads_df() and returns a small
-DataFrame, so the Streamlit page can reuse them. Percentages are out of all
+DataFrame. main() prints them and export_results() writes them to results/ as
+CSV files, which is all the Streamlit page (app.py) reads. Percentages are out of all
 ads in the table, except swedish_mentioned, which gives them per language.
 The table keeps ads from earlier runs (see db.py), so they count too.
 """
 
+import json
 import re
 import sys
 
 import duckdb
 import pandas as pd
 
-from sweden_jobs.paths import DB_PATH
+from sweden_jobs.paths import DB_PATH, RESULTS_DIR
 
 SWEDISH_WORDS = re.compile(
     r"\b(?:och|att|är|för|med|som|vi|du|på|av|det|en|ett|har|kommer|inom)\b"
@@ -71,7 +73,8 @@ def detect_language(text):
 def load_ads_df():
     with duckdb.connect(str(DB_PATH), read_only=True) as con:
         df = con.sql(
-            "SELECT id, headline, description, municipality FROM ads"
+            "SELECT id, headline, description, municipality, publication_date "
+            "FROM ads"
         ).df()
     df["language"] = df["description"].map(detect_language)
     return df
@@ -114,7 +117,11 @@ def swedish_mentioned(df):
 def top_cities(df, n=10):
     """Municipalities with the most ads; ads without a municipality are skipped."""
     counts = df["municipality"].value_counts().head(n)
-    return pd.DataFrame({"municipality": counts.index, "ads": counts.values})
+    return pd.DataFrame({
+        "municipality": counts.index,
+        "ads": counts.values,
+        "percent": [_percent(c, len(df)) for c in counts.values],
+    })
 
 
 def entry_level_counts(df):
@@ -146,22 +153,52 @@ def skill_counts(df):
     return result.sort_values("ads", ascending=False, ignore_index=True)
 
 
+# CSV file name (without .csv) -> (printed title, analysis function).
+# Shared by main() and export_results(), so the printout and the files match.
+ANALYSES = {
+    "language": ("Language of the ad", language_share),
+    "swedish_mentioned": ("Mentions Swedish (svenska/swedish)", swedish_mentioned),
+    "top_cities": ("Top cities", top_cities),
+    "entry_level": ("Entry-level ads (by headline)", entry_level_counts),
+    "skills": ("Skills", skill_counts),
+}
+
+
+def run_analyses(df):
+    return {name: fn(df) for name, (_, fn) in ANALYSES.items()}
+
+
+def export_results(df, results, out_dir=RESULTS_DIR):
+    """Write each result table to results/<name>.csv, plus results/meta.json.
+
+    The Streamlit page reads only these files, so it needs no database.
+    data_date is the newest ad's publication date, which is about when the
+    ads were last fetched.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, table in results.items():
+        table.to_csv(out_dir / f"{name}.csv", index=False, encoding="utf-8")
+    meta = {
+        "data_date": df["publication_date"].max().date().isoformat(),
+        "ads": len(df),
+    }
+    with open(out_dir / "meta.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2)
+        f.write("\n")
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
     df = load_ads_df()
-    sections = [
-        ("Language of the ad", language_share(df)),
-        ("Mentions Swedish (svenska/swedish)", swedish_mentioned(df)),
-        ("Top cities", top_cities(df)),
-        ("Entry-level ads (by headline)", entry_level_counts(df)),
-        ("Skills", skill_counts(df)),
-    ]
+    results = run_analyses(df)
     print(f"{len(df)} ads")
-    for title, table in sections:
-        print(f"\n== {title} ==")
+    for name, table in results.items():
+        print(f"\n== {ANALYSES[name][0]} ==")
         print(table.to_string(index=False))
+    export_results(df, results)
+    print(f"\nResults written to {RESULTS_DIR}")
 
 
 if __name__ == "__main__":

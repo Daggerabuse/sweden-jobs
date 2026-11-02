@@ -717,6 +717,7 @@ name = "sweden-jobs"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "altair" },
     { name = "duckdb" },
     { name = "pandas" },
     { name = "requests" },
@@ -731,6 +732,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "altair", specifier = ">=6.3.0" },
     { name = "duckdb", specifier = ">=2.0.0" },
     { name = "pandas", specifier = ">=3.1.0" },
     { name = "requests", specifier = ">=2.34.2" },
