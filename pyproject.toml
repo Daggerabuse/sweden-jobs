@@ -1,0 +1,22 @@
+[project]
+name = "sweden-jobs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Mete Cem Bulut", email = "metecem22@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "duckdb>=2.0.0",
+    "pandas>=3.1.0",
+    "requests>=2.34.2",
+    "urllib3>=2.8.0",
+]
+
+[project.scripts]
+sweden-jobs = "sweden_jobs.fetch:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
