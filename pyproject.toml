@@ -1,7 +1,7 @@
 [project]
 name = "sweden-jobs"
 version = "0.1.0"
-description = "Analysis of Data/IT job ads in Sweden using the JobTech API"
+description = "Pipeline and analysis of IT job ads in Sweden from the JobTech API"
 readme = "README.md"
 authors = [
     { name = "Mete Cem Bulut", email = "metecem22@gmail.com" }

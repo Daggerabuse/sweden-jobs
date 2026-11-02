@@ -11,7 +11,7 @@ So I started this project with one question: *as a first-year student, could I f
 
 ## Key findings
 
-Snapshot of 2,100 Data/IT ads on Platsbanken, collected on 2 November 2026.
+Snapshot of 2,100 Data/IT ads on Platsbanken, collected on 2 November 2026. These numbers stay fixed; the [live dashboard](https://sweden-jobs.streamlit.app/) shows the current figures.
 
 **Language**
 - **73%** of ads are written in Swedish, 27% in English.
@@ -42,16 +42,34 @@ Azure is mentioned **twice as often as AWS**: the Swedish market leans on Micros
 flowchart LR
     A[JobTech API] -->|fetch.py| B[data/ads.json]
     B -->|db.py| C[(DuckDB<br/>data/jobs.duckdb)]
-    C -->|analysis.py| D[Findings]
+    C -->|analysis.py| D[results/*.csv]
+    D -->|commit to master| E[Streamlit dashboard]
+    C -.->|force-push, single commit| F[data branch]
+    F -.->|restored at the start of each run| C
 ```
 
 - **`fetch.py`** pages through the API's Data/IT ads, newest first, with retries and back-off. It removes duplicate ads (ads can shift between pages during a crawl) and writes the result atomically, so a crash never leaves a half-written file.
 - **`db.py`** upserts the ads into DuckDB. Nothing is deleted, so ads accumulate across runs and expired ads stay available for trend analysis.
-- **`analysis.py`** detects each ad's language, checks for Swedish requirements, and counts skills, cities and entry-level ads.
+- **`analysis.py`** detects each ad's language, checks for Swedish requirements, and counts skills, cities and entry-level ads. It writes the results to `results/`.
+
+### Daily automation
+
+A GitHub Actions workflow (`.github/workflows/daily.yml`) runs every day at 05:17 UTC, and can also be started by hand. Each run:
+
+1. restores `jobs.duckdb` from the `data` branch,
+2. runs fetch → db → analysis,
+3. force-pushes the updated database back to the `data` branch as a single commit, so the repository doesn't collect a new copy of the binary file every day,
+4. commits `results/` to master as "Update results (YYYY-MM-DD)" if anything changed.
+
+The Streamlit dashboard reads only `results/`, so it updates by itself after that commit.
+
+### `first_seen` and `last_seen`
+
+Each ad has two UTC timestamps. `first_seen` is the run in which the ad first appeared and is never changed afterwards. `last_seen` is updated on every run in which the ad is still in the API. An ad whose `last_seen` stops moving has closed or expired. Ads collected before tracking started (before 2 November 2026) have an empty `first_seen`, because their first appearance is unknown.
 
 ## Limitations
 
-- **API cap:** the search API stops answering after offset 2000, so one run collects at most 2,100 ads (out of 2,501 on 2 November). Because ads are sorted newest first, the oldest ads are the ones missed. Running daily and accumulating closes most of the gap.
+- **API cap:** the search API stops answering after offset 2000, so one run collects at most 2,100 ads (out of 2,501 on 2 November). Because ads are sorted newest first, the oldest ads are the ones missed. The daily run accumulates ads in the database, so ads missed one day are usually caught on a later day while they are still among the newest, and the gap closes over time. Ads that were already past the cap before the first run stay missed.
 - **`experience_required` is unreliable:** it says "experience required" even for most junior and graduate ads, including every Volvo Group Graduate Program ad. Entry-level ads are therefore detected from the headline instead.
 - **Language detection is word-based:** it compares common Swedish and English words, so ads that mix both languages are labelled by whichever part is longer. "Swedish" can also mean "a Swedish company", which slightly inflates the Swedish-requirement count for English ads.
 - **Platsbanken is not the whole market:** many large companies post graduate programmes and internships only on their own career sites or LinkedIn, so entry-level opportunities are likely undercounted.
@@ -73,6 +91,9 @@ uv run python -m sweden_jobs.analysis   # print the findings
 
 ## Roadmap
 
-- **Automation:** a daily GitHub Actions run, a `last_seen` date per ad to separate open and closed ads, and tests.
+- ~~**Automation:** daily GitHub Actions run, `first_seen` / `last_seen` per ad.~~ Done.
+- **Tests and CI:** automated tests, run on every push.
+- **Open vs. closed ads:** use `last_seen` to tell which ads are still open and how long ads stay up.
+- **Trend charts:** show how skills, languages and entry-level shares change over time.
 - **Beyond the 2,000 cap:** split queries by publication date to collect every ad.
 - **NLP:** better language detection, skill extraction beyond keyword lists, and clustering ads to see how many different jobs hide behind one title.
