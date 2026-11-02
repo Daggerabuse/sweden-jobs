@@ -26,4 +26,15 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pandas-stubs>=3.1.0.261029",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
 ]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

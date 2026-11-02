@@ -1,4 +1,6 @@
 # sweden-jobs
+[![CI](https://github.com/Daggerabuse/sweden-jobs/actions/workflows/ci.yml/badge.svg)](https://github.com/Daggerabuse/sweden-jobs/actions/workflows/ci.yml)
+
 **Live dashboard:** [sweden-jobs.streamlit.app](https://sweden-jobs.streamlit.app/)
 
 A data pipeline that collects IT job ads in Sweden from the Swedish Public Employment Service's [JobTech API](https://jobtechdev.se/en/components/jobsearch) and analyses what the market asks for: language, skills, locations and entry-level opportunities.
@@ -89,10 +91,21 @@ uv run python -m sweden_jobs.db         # load them into data/jobs.duckdb
 uv run python -m sweden_jobs.analysis   # print the findings
 ```
 
+### Running tests
+
+`uv sync` also installs the dev tools (pytest, ruff). Then:
+
+```bash
+uv run pytest        # run the tests
+uv run ruff check    # lint
+```
+
+The tests never call the real API or touch `data/`: database tests use a temporary DuckDB file. CI runs both commands on every push to master made by a person and on every pull request (the daily bot's pushes use `GITHUB_TOKEN`, which doesn't trigger workflows) (`.github/workflows/ci.yml`).
+
 ## Roadmap
 
 - ~~**Automation:** daily GitHub Actions run, `first_seen` / `last_seen` per ad.~~ Done.
-- **Tests and CI:** automated tests, run on every push.
+- ~~**Tests and CI:** automated tests, run on every push.~~ Done.
 - **Open vs. closed ads:** use `last_seen` to tell which ads are still open and how long ads stay up.
 - **Trend charts:** show how skills, languages and entry-level shares change over time.
 - **Beyond the 2,000 cap:** split queries by publication date to collect every ad.

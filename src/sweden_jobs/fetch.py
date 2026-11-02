@@ -61,7 +61,7 @@ def fetch_all(session):
         if total is None:
             try:
                 total = data["total"]["value"]
-            except (KeyError, TypeError):
+            except KeyError, TypeError:
                 raise RuntimeError(
                     f"Unexpected API response, no total.value: {str(data)[:300]}"
                 ) from None
@@ -133,9 +133,11 @@ def clean_ad(ad):
     }
 
 
-def save(ads, path=ADS_JSON):
+def save(ads, path=None):
     """Write to a temp file first, then swap it in, so a crash never leaves
     a half-written ads.json."""
+    if path is None:
+        path = ADS_JSON
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     try:

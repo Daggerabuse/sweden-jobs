@@ -19,10 +19,7 @@ BAR_COLOR = {"light": "#2a78d6", "dark": "#3987e5"}
 # Not cached: reading these small files takes milliseconds, and st.cache_data
 # would keep serving old numbers after results/ is rewritten.
 def load_results():
-    tables = {
-        path.stem: pd.read_csv(path, encoding="utf-8")
-        for path in RESULTS_DIR.glob("*.csv")
-    }
+    tables = {path.stem: pd.read_csv(path, encoding="utf-8") for path in RESULTS_DIR.glob("*.csv")}
     meta = json.loads((RESULTS_DIR / "meta.json").read_text(encoding="utf-8"))
     return tables, meta
 
@@ -128,14 +125,16 @@ st.metric(
 # bars would be too small to read.
 categories = entry[entry["category"] != "Any entry-level"]
 st.dataframe(
-    pd.DataFrame({
-        "Category": categories["category"],
-        "Ads": categories["ads"],
-        "% of all ads": [
-            format_percent(a, p)
-            for a, p in zip(categories["ads"], categories["percent"])
-        ],
-    }),
+    pd.DataFrame(
+        {
+            "Category": categories["category"],
+            "Ads": categories["ads"],
+            "% of all ads": [
+                format_percent(a, p)
+                for a, p in zip(categories["ads"], categories["percent"], strict=True)
+            ],
+        }
+    ),
     hide_index=True,
     width="stretch",
 )

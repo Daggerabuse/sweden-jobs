@@ -16,12 +16,8 @@ import pandas as pd
 
 from sweden_jobs.paths import DB_PATH, RESULTS_DIR
 
-SWEDISH_WORDS = re.compile(
-    r"\b(?:och|att|är|för|med|som|vi|du|på|av|det|en|ett|har|kommer|inom)\b"
-)
-ENGLISH_WORDS = re.compile(
-    r"\b(?:the|and|to|of|you|we|with|for|is|are|our|will|an|as)\b"
-)
+SWEDISH_WORDS = re.compile(r"\b(?:och|att|är|för|med|som|vi|du|på|av|det|en|ett|har|kommer|inom)\b")
+ENGLISH_WORDS = re.compile(r"\b(?:the|and|to|of|you|we|with|for|is|are|our|will|an|as)\b")
 
 SWEDISH_MENTION = r"\b(?:svenska|swedish)\b"
 
@@ -47,8 +43,7 @@ SKILLS = {
 # Matched against the headline, whole words, case-insensitive. "talent" alone
 # is not used: it also appears in titles like "HR Product Owner for Talent".
 ENTRY_LEVEL = {
-    "Junior / graduate":
-        r"\b(?:juniora?|graduate|trainee|ny(?:ut)?examinerad\w*|talent program(?:me)?)\b",
+    "Junior / graduate": r"\b(?:juniora?|graduate|trainee|ny(?:ut)?examinerad\w*|talent program(?:me)?)\b",
     "Internship": r"\b(?:praktik|praktikant(?:er)?|intern|internship)\b",
     "Summer job": r"\b(?:sommarjobb\w*|summer job|summer intern\w*)\b",
     "Student job": r"\b(?:student|studentmedarbetare)\b",
@@ -73,8 +68,7 @@ def detect_language(text):
 def load_ads_df():
     with duckdb.connect(str(DB_PATH), read_only=True) as con:
         df = con.sql(
-            "SELECT id, headline, description, municipality, publication_date "
-            "FROM ads"
+            "SELECT id, headline, description, municipality, publication_date FROM ads"
         ).df()
     df["language"] = df["description"].map(detect_language)
     return df
@@ -86,11 +80,13 @@ def _percent(part, total):
 
 def language_share(df):
     counts = df["language"].value_counts()
-    return pd.DataFrame({
-        "language": counts.index,
-        "ads": counts.values,
-        "percent": [_percent(n, len(df)) for n in counts.values],
-    })
+    return pd.DataFrame(
+        {
+            "language": counts.index,
+            "ads": counts.values,
+            "percent": [_percent(n, len(df)) for n in counts.values],
+        }
+    )
 
 
 def swedish_mentioned(df):
@@ -106,22 +102,28 @@ def swedish_mentioned(df):
     mentions = df["description"].str.contains(SWEDISH_MENTION, case=False, na=False)
     grouped = mentions.groupby(df["language"]).agg(["size", "sum"])
     grouped = grouped.reindex(df["language"].value_counts().index)
-    return pd.DataFrame({
-        "language": grouped.index,
-        "ads": grouped["size"].values,
-        "mentions_swedish": grouped["sum"].values,
-        "percent": [_percent(m, n) for n, m in zip(grouped["size"], grouped["sum"])],
-    })
+    return pd.DataFrame(
+        {
+            "language": grouped.index,
+            "ads": grouped["size"].values,
+            "mentions_swedish": grouped["sum"].values,
+            "percent": [
+                _percent(m, n) for n, m in zip(grouped["size"], grouped["sum"], strict=True)
+            ],
+        }
+    )
 
 
 def top_cities(df, n=10):
     """Municipalities with the most ads; ads without a municipality are skipped."""
     counts = df["municipality"].value_counts().head(n)
-    return pd.DataFrame({
-        "municipality": counts.index,
-        "ads": counts.values,
-        "percent": [_percent(c, len(df)) for c in counts.values],
-    })
+    return pd.DataFrame(
+        {
+            "municipality": counts.index,
+            "ads": counts.values,
+            "percent": [_percent(c, len(df)) for c in counts.values],
+        }
+    )
 
 
 def entry_level_counts(df):
@@ -168,13 +170,15 @@ def run_analyses(df):
     return {name: fn(df) for name, (_, fn) in ANALYSES.items()}
 
 
-def export_results(df, results, out_dir=RESULTS_DIR):
+def export_results(df, results, out_dir=None):
     """Write each result table to results/<name>.csv, plus results/meta.json.
 
     The Streamlit page reads only these files, so it needs no database.
     data_date is the newest ad's publication date, which is about when the
     ads were last fetched.
     """
+    if out_dir is None:
+        out_dir = RESULTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     for name, table in results.items():
         table.to_csv(out_dir / f"{name}.csv", index=False, encoding="utf-8")

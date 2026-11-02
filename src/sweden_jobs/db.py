@@ -61,7 +61,9 @@ def create_table(con):
     con.execute("ALTER TABLE ads ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP")
 
 
-def load_ads(path=ADS_JSON):
+def load_ads(path=None):
+    if path is None:
+        path = ADS_JSON
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
@@ -93,10 +95,12 @@ def main():
     with duckdb.connect(str(DB_PATH)) as con:
         upsert_ads(con, ads)
         print(con.sql("SELECT COUNT(*) FROM ads"))
-        print(con.sql(
-            "SELECT headline, employer, municipality FROM ads "
-            "ORDER BY publication_date DESC LIMIT 5"
-        ))
+        print(
+            con.sql(
+                "SELECT headline, employer, municipality FROM ads "
+                "ORDER BY publication_date DESC LIMIT 5"
+            )
+        )
 
 
 if __name__ == "__main__":

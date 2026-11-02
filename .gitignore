@@ -7,5 +7,6 @@ wheels/
 *.egg-info
 .idea/
 data/
+CLAUDE.md
 # Virtual environments
 .venv
