@@ -4,19 +4,18 @@ import json
 import os
 import tempfile
 import time
-from pathlib import Path
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+from sweden_jobs.paths import ADS_JSON
 
 URL = "https://jobsearch.api.jobtechdev.se/search"
 OCCUPATION_FIELD = "apaJ_2ja_LuF"  # Data/IT
 LIMIT = 100
 MAX_OFFSET = 2000
 SLEEP_SECONDS = 0.5
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = PROJECT_ROOT / "data" / "ads.json"
 
 
 def make_session():
@@ -39,8 +38,6 @@ def fetch_page(session, offset):
         "occupation-field": OCCUPATION_FIELD,
         "limit": LIMIT,
         "offset": offset,
-        # Newest first: under the offset cap we keep the newest ads, and an ad
-        # published mid-crawl only causes a duplicate, which dedupe() removes.
         "sort": "pubdate-desc",
     }
     response = session.get(URL, params=params, timeout=30)
@@ -86,8 +83,6 @@ def fetch_all(session):
         time.sleep(SLEEP_SECONDS)
 
     ads = dedupe(all_ads)
-    # One check covers every way of ending up short: the offset cap, an early
-    # empty page, or ads skipped because results shifted during the crawl.
     if len(ads) < total:
         reason = "API offset cap" if hit_cap else "results shifted or ended early"
         print(f"WARNING: got {len(ads)} of {total} ads ({reason})")
@@ -95,19 +90,23 @@ def fetch_all(session):
 
 
 def dedupe(ads):
-    """Drop repeated ids (ads can shift between pages while we crawl).
-    Ads without an id are kept: there is nothing to compare them by."""
+    """Drop repeated ids (ads can shift between pages while we crawl) and ads
+    without an id, which can't be stored in the id-keyed database."""
     seen = set()
     unique = []
+    no_id = 0
     for ad in ads:
         ad_id = ad.get("id")
-        if ad_id is not None:
-            if ad_id in seen:
-                continue
+        if ad_id is None:
+            no_id += 1
+        elif ad_id not in seen:
             seen.add(ad_id)
-        unique.append(ad)
-    if len(unique) < len(ads):
-        print(f"Removed {len(ads) - len(unique)} duplicate ads")
+            unique.append(ad)
+    if no_id:
+        print(f"WARNING: dropped {no_id} ads without an id")
+    duplicates = len(ads) - len(unique) - no_id
+    if duplicates:
+        print(f"Removed {duplicates} duplicate ads")
     return unique
 
 
@@ -134,7 +133,7 @@ def clean_ad(ad):
     }
 
 
-def save(ads, path=OUTPUT):
+def save(ads, path=ADS_JSON):
     """Write to a temp file first, then swap it in, so a crash never leaves
     a half-written ads.json."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -153,7 +152,7 @@ def main():
         raw_ads = fetch_all(session)
     ads = [clean_ad(ad) for ad in raw_ads]
     save(ads)
-    print(f"{len(ads)} ads saved to {OUTPUT}")
+    print(f"{len(ads)} ads saved to {ADS_JSON}")
 
 
 if __name__ == "__main__":
