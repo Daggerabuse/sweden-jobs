@@ -1,4 +1,5 @@
 # sweden-jobs
+**Live dashboard:** [sweden-jobs.streamlit.app](https://sweden-jobs.streamlit.app/)
 
 A data pipeline that collects IT job ads in Sweden from the Swedish Public Employment Service's [JobTech API](https://jobtechdev.se/en/components/jobsearch) and analyses what the market asks for: language, skills, locations and entry-level opportunities.
 
@@ -72,7 +73,6 @@ uv run python -m sweden_jobs.analysis   # print the findings
 
 ## Roadmap
 
-- **Dashboard:** a Streamlit page with the findings.
 - **Automation:** a daily GitHub Actions run, a `last_seen` date per ad to separate open and closed ads, and tests.
 - **Beyond the 2,000 cap:** split queries by publication date to collect every ad.
 - **NLP:** better language detection, skill extraction beyond keyword lists, and clustering ads to see how many different jobs hide behind one title.
