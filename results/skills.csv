@@ -1,17 +1,17 @@
 skill,ads,percent
-Python,658,16.9
-Azure,632,16.3
-SQL,538,13.8
-Linux,495,12.7
-Kubernetes,385,9.9
-Java,372,9.6
-C#,294,7.6
-Docker,293,7.5
-C++,289,7.4
-JavaScript,287,7.4
-AWS,274,7.0
-TypeScript,273,7.0
-.NET,258,6.6
-GCP,167,4.3
-Power BI,87,2.2
-Spark,38,1.0
+Python,687,16.9
+Azure,661,16.3
+SQL,559,13.8
+Linux,511,12.6
+Kubernetes,406,10.0
+Java,390,9.6
+Docker,308,7.6
+C#,302,7.4
+C++,300,7.4
+JavaScript,300,7.4
+AWS,293,7.2
+TypeScript,279,6.9
+.NET,264,6.5
+GCP,172,4.2
+Power BI,88,2.2
+Spark,42,1.0
